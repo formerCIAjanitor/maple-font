@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<glyph name="dentistrybottomverticalright" format="2">
+  <advance width="600"/>
+  <unicode hex="23BF"/>
+  <outline>
+    <contour>
+      <point x="287.914" y="100" type="line"/>
+      <point x="399" y="730" type="line"/>
+      <point x="299" y="730" type="line"/>
+      <point x="170.281" y="0" type="line"/>
+      <point x="540.281" y="0" type="line"/>
+      <point x="557.914" y="100" type="line"/>
+    </contour>
+  </outline>
+</glyph>

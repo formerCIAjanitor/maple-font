@@ -23,11 +23,25 @@ on:
         required: false
         default: false
         type: boolean
-      nf_mono:
-        description: 'Fixed Nerd Font icon width (add "--nf-mono" to build args)'
+      width:
+        description: 'Glyph width mode (add "--width <default|narrow|slim>" to build args)'
         required: false
-        default: false
-        type: boolean
+        default: default
+        type: choice
+        options:
+          - default
+          - narrow
+          - slim
+      nerd_font:
+        description: 'Nerd Font icon mode: default("--nf"), mono("--nf-mono"), proportional("--nf-propo"), none("--no-nf")'
+        required: false
+        default: default
+        type: choice
+        options:
+          - default
+          - mono
+          - proportional
+          - none
       feat:
         description: 'Enable features, split by `,`, e.g. "cv01,ss02" (add "--feat feat1,feat2" to build args)'
         required: false
@@ -48,10 +62,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -78,7 +92,8 @@ jobs:
             fontforge --version
           fi
 
-      - name: Run custom script
+      - id: build
+        name: Run custom script
         run: |
           build_args="--archive"
           if [ "${{ github.event.inputs.cn }}" == "true" ]; then
@@ -93,9 +108,23 @@ jobs:
           if [ "${{ github.event.inputs.no_hinted }}" == "true" ]; then
             build_args="$build_args --no-hinted"
           fi
-          if [ "${{ github.event.inputs.nf_mono }}" == "true" ]; then
-            build_args="$build_args --nf-mono"
+          if [ "${{ github.event.inputs.width }}" != "default" ]; then
+            build_args="$build_args --width ${{ github.event.inputs.width }}"
           fi
+          case "${{ github.event.inputs.nerd_font }}" in
+            default)
+              build_args="$build_args --nf"
+              ;;
+            mono)
+              build_args="$build_args --nf-mono"
+              ;;
+            proportional)
+              build_args="$build_args --nf-propo"
+              ;;
+            none)
+              build_args="$build_args --no-nf"
+              ;;
+          esac
           if [ -n "${{ github.event.inputs.feat }}" ]; then
             build_args="$build_args --feat ${{ github.event.inputs.feat }}"
           fi
@@ -105,9 +134,9 @@ jobs:
 
           echo "BUILD_ARGS=$build_args" >> $GITHUB_ENV
           python build.py $build_args
-        continue-on-error: true
       - id: check_issue
         name: Check issue feature file
+        if: ${{ always() }}
         run: |
           if [ -f fonts/issue.fea ]
           then
@@ -116,12 +145,13 @@ jobs:
             echo 'exists=false' >> $GITHUB_OUTPUT
           fi
       - name: Upload issue artifact
-        if: ${{ steps.check_issue.outputs.exists == 'true' }}
-        uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.check_issue.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@v7
         with:
           name: issue-fea-file
           path: fonts/issue.fea
       - name: Create release
+        if: ${{ success() }}
         run: |
           if [ ! -d "fonts/archive" ]; then
             echo "Error: Failed to build font, please check [Run custom script] step."
